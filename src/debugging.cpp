@@ -49,7 +49,7 @@ void _log(const char*  prefix, const char* file,    const char* function,
     char time_string[MAX_TIME_SIZE] = {};
     strftime(time_string, MAX_TIME_SIZE, "%H:%M:%S", tp);
 
-    fprintf (GLOBAL_LOG_FILE, "[%-30s] [%-4zu] [%-27s] [%s] <span style=\"color: %s\"> [%5s] -> ", file, line, function, time_string, color, prefix);
+    fprintf (GLOBAL_LOG_FILE, "[%-50s] [%-4zu] [%-27s] [%s] <span style=\"color: %s\"> [%5s] -> ", file, line, function, time_string, color, prefix);
     vfprintf(GLOBAL_LOG_FILE, message, ap);
     va_end  (ap);
     fprintf (GLOBAL_LOG_FILE, "</span>\n");

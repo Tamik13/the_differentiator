@@ -7,9 +7,10 @@ typedef double bin_tree_elem;
 #define BNT_MDF "%lg"
 
 enum elem_type_e {
-    TYPE_OP   = 1,
-    TYPE_VAR  = 2,
-    TYPE_COST = 3
+    TYPE_OP    = 1,
+    TYPE_VAR   = 2,
+    TYPE_CONST = 3,
+    NAT        = 0  // Not a type
 };
 
 struct node_s {

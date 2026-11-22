@@ -46,15 +46,21 @@ error_code_e bin_tree_destroy(bin_tree_s* const bin_tree) {
         SAFE_CALL( stack_pop(&stack, &node), stack_destroy(&stack));
 
         if ((*node)->left != NULL && (*node)->right != NULL) {
+
             SAFE_CALL( stack_push(&stack, node),            stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->left),  stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->right), stack_destroy(&stack))
+
         } else if ((*node)->left != NULL) {
+
             SAFE_CALL( stack_push(&stack, node),            stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->left),  stack_destroy(&stack))
+
         } else if ((*node)->right != NULL) {
+
             SAFE_CALL( stack_push(&stack, node),            stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->right), stack_destroy(&stack))
+
         } else {
             SAFE_CALL( bin_tree_del(bin_tree, node), )
         }
@@ -163,15 +169,21 @@ error_code_e bin_tree_print_preorder(bin_tree_s* const bin_tree, char** buffer) 
         }
 
         if ((*node)->left != NULL && (*node)->right != NULL) {
+
             SAFE_CALL( stack_push(&stack, &void_node_ptr),  stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->right), stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->left),  stack_destroy(&stack))
+
         } else if ((*node)->left != NULL) {
+
             SAFE_CALL( stack_push(&stack, &void_node_ptr),  stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->left),  stack_destroy(&stack))
+
         } else if ((*node)->right != NULL) {
+
             SAFE_CALL( stack_push(&stack, &void_node_ptr),  stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->right), stack_destroy(&stack))
+
         } else {
             count_write += (size_t)snprintf(*buffer + count_write, count_nodes * data_len - count_write, ")");
         }

@@ -62,7 +62,7 @@ error_code_e bin_tree_destroy(bin_tree_s* const bin_tree) {
             SAFE_CALL( stack_push(&stack, &(*node)->right), stack_destroy(&stack))
 
         } else {
-            SAFE_CALL( bin_tree_del(bin_tree, node), )
+            SAFE_CALL( bin_tree_del_node(bin_tree, node), )
         }
     }
 
@@ -95,9 +95,11 @@ error_code_e bin_tree_insert(bin_tree_s* const bin_tree, node_s** const node, bi
 }
 
 
-error_code_e bin_tree_del(bin_tree_s* const bin_tree, node_s** const node) {
+error_code_e bin_tree_del_node(bin_tree_s* const bin_tree, node_s** const node) {
     assert(node != NULL);
     assert(bin_tree->count_nodes > 0);
+
+    free(*node);
 
     LOG_OK("bin_tree_del successfully");
     return SUCCESS;

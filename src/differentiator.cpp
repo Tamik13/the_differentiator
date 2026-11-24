@@ -6,7 +6,6 @@
 #include "../include/bin_tree.h"
 #include "../include/stack.h"
 
-const size_t STR_OP_SIZE = 30;
 
 error_code_e op_tree_read       (      bin_tree_s*         bin_tree, char**  buffer);
 error_code_e op_tree_init       (      bin_tree_s*         bin_tree, char**  buffer);
@@ -15,6 +14,8 @@ ssize_t      read_to_buffer     (const char*         const file,     char*   buf
 node_s*      diff               (      node_s*             node);
 node_s*      new_node           (      elem_type_e         type,     double  value,        node_s* left, node_s* right);
 node_s*      copy_node          (      node_s*             node);
+error_code_e branch_simplify    (      bin_tree_s*         bin_tree, node_s* node);
+double       node_solve         (      bin_tree_s*         bin_tree, node_s* node);
 // TODO: op_tree_init
 
 node_s* op_plus (node_s* first_node, node_s* second_node);
@@ -67,6 +68,9 @@ int main() {
 
     diff_tree.count_nodes = 5;
     bin_tree_dmp(&diff_tree);
+
+    SAFE_CALL( branch_simplify(&bin_tree, bin_tree.root), )
+    SAFE_CALL( branch_simplify(&diff_tree, diff_tree.root), )
 
     tex_dump_new_formula(bin_tree.root);
     tex_dump_new_formula(diff_tree.root);
@@ -124,7 +128,7 @@ error_code_e op_tree_read(bin_tree_s* bin_tree, char** buffer) {
 error_code_e op_tree_init(bin_tree_s* bin_tree, char** buffer) {
     assert(bin_tree != NULL);
 
-    ssize_t count_read = read_to_buffer("./src/data.txt", *buffer);
+    ssize_t count_read = read_to_buffer("./src/data.txt", *buffer); //TODO: DEL SECOND READ FROM FILE
 
     if (count_read == -1) {
         LOG_ERROR("error during read data.txt");
@@ -236,15 +240,16 @@ error_code_e string_to_node_elem(const char* string, node_s* node) {
         node->type = TYPE_CONST;
         return SUCCESS;
 
-    } else if (math_hash_to_char(hash) != '\0') {
+    } else if (math_hash_to_char(hash) != '\0') { //TODO: MAKE ARR WITH OP INFO STRUCT
         node->data = hash;
         node->type = TYPE_OP;
         return SUCCESS;
 
-    } else if (strcmp(string, "x") == 0) {
+    } else if (strcmp(string, "x") == 0) {  //TODO: ARR WITH VARS
         node->data = 'x';
         node->type = TYPE_VAR;
         return SUCCESS;
+
     } else {
         return INCORRECT_PARAM;
     }
@@ -266,7 +271,7 @@ node_s* diff(node_s* node) {
 
             switch ((math_hash_e)(node->data)) {
 
-                case TYPE_PLUS:
+                case TYPE_PLUS: //TODO: ARR WITH FUNC PTR
                     return diff_plus(node);
 
                 case TYPE_MINUS:
@@ -333,6 +338,68 @@ node_s* copy_node(node_s* node) {
     node_copy->type  = node->type;
 
     return node_copy;
+}
+
+
+error_code_e branch_simplify(bin_tree_s* bin_tree, node_s* node) {
+    assert(node != NULL);
+
+    if (node->left  == NULL || node->right == NULL) {
+        return SUCCESS;
+    }
+
+    branch_simplify(bin_tree, node->left);
+    branch_simplify(bin_tree, node->right);
+
+    if (node->left->type == TYPE_CONST && node->right->type == TYPE_CONST) {
+        assert(node->type == TYPE_OP);
+
+        double new_data = node_solve(bin_tree, node);
+        if (isnan(new_data)) {
+            LOG_ERROR("cant solve node");
+            return INCORRECT_PARAM;
+        }
+
+        node->data  = new_data;
+        node->left  = NULL;
+        node->right = NULL;
+        node->type  = TYPE_CONST;
+
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+    }
+
+    bin_tree_dmp(bin_tree);
+    return SUCCESS;
+}
+
+
+double node_solve(bin_tree_s* bin_tree, node_s* node) {
+    assert(node        != NULL);
+    assert(node->left  != NULL);
+    assert(node->right != NULL);
+
+    switch ((math_hash_e)node->data) {
+            case TYPE_PLUS:
+                return node->left->data + node->right->data;
+
+            case TYPE_MINUS:
+                return node->left->data - node->right->data;
+
+            case TYPE_MUL:
+                return node->left->data * node->right->data;
+
+            case TYPE_DIV:
+                return node->left->data / node->right->data;
+
+            case TYPE_SIN:
+            case TYPE_COS:
+            default:
+                LOG_ERROR("Incorrect param");
+        }
+
+    bin_tree_dmp(bin_tree);
+    return NAN;
 }
 
 

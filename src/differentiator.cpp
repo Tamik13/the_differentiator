@@ -31,17 +31,31 @@ node_s* diff_div  (node_s* node);
 node_s* diff_sin  (node_s* node);
 node_s* diff_cos  (node_s* node);
 
-error_code_e open_tex();
-void         tex_dump_node();
-error_code_e close_tex();
+error_code_e open_tex            ();
+void         tex_dump_node       (node_s* node);
+void         tex_dump_new_formula(node_s* node);
+error_code_e close_tex           ();
 
-const char* const tex_file_name = " ";
-      FILE*       GLOBAL_TEX_FILE;
+void tex_dump_const(node_s* node);
+void tex_dump_var  (node_s* node);
+void tex_dump_op   (node_s* node);
+
+void tex_dump_plus (node_s* node);
+void tex_dump_minus(node_s* node);
+void tex_dump_mul  (node_s* node);
+void tex_dump_div  (node_s* node);
+void tex_dump_cos  (node_s* node);
+void tex_dump_sin  (node_s* node);
+
+const char* const tex_file_name   = "./logs/tex/log.tex";
+      FILE*       GLOBAL_TEX_FILE = NULL;
 
 int main() {
-    log_start();
+    SAFE_CALL( log_start(), )
+    SAFE_CALL( open_tex(),  )
 
-    char* buffer = NULL;
+
+    char* buffer        = NULL;
     bin_tree_s bin_tree = {};
     bin_tree_assign(&bin_tree);
     SAFE_CALL( op_tree_read(&bin_tree, &buffer), );
@@ -54,7 +68,11 @@ int main() {
     diff_tree.count_nodes = 5;
     bin_tree_dmp(&diff_tree);
 
+    tex_dump_new_formula(bin_tree.root);
+    tex_dump_new_formula(diff_tree.root);
+
     log_end();
+    close_tex();
     return 0;
 }
 
@@ -406,9 +424,9 @@ node_s* diff_cos(node_s* node) {
 
 
 error_code_e open_tex() {
-    GLOBAL_TEX_FILE = fopen(tex_file_name, "r");
+    GLOBAL_TEX_FILE = fopen(tex_file_name, "w");
 
-    if (GLOBAL_TEX_FILE) {
+    if (GLOBAL_TEX_FILE == NULL) {
         LOG_ERROR("cant open tex file");
         return ERROR_DURING_OPEN;
     }
@@ -422,7 +440,36 @@ error_code_e open_tex() {
     return SUCCESS;
 }
 
-void tex_dump_node() {
+
+
+void tex_dump_node(node_s* node) {
+
+    switch (node->type) {
+        case TYPE_CONST:
+            tex_dump_const(node);
+            return;
+
+        case TYPE_VAR:
+            tex_dump_var(node);
+            return;
+
+        case TYPE_OP:
+            tex_dump_op(node);
+            return;
+
+        case NAT:
+        default:
+            LOG_ERROR("incorrect param");
+    }
+}
+
+
+void tex_dump_new_formula(node_s* node) {
+    assert(node != NULL);
+
+    fprintf(GLOBAL_TEX_FILE, "\n\\[\n");
+    tex_dump_node(node);
+    fprintf(GLOBAL_TEX_FILE, "\n\\]\n");
 
     return;
 }
@@ -430,15 +477,213 @@ void tex_dump_node() {
 
 error_code_e close_tex() {
     fprintf(GLOBAL_TEX_FILE,
-            "\end{document}");
+            "\\end{document}");
 
     if (fclose(GLOBAL_TEX_FILE) == EOF) {
+        system("pdflatex -output-directory=/Users/tamerlannagaev/prodva/THE_DIFFERENTIATOR/logs/tex /Users/tamerlannagaev/prodva/THE_DIFFERENTIATOR/logs/tex/log.tex");
         LOG_ERROR("cant close tex file");
         return ERROR_DURING_CLOSE;
     }
+
+    system("pdflatex -output-directory=/Users/tamerlannagaev/prodva/THE_DIFFERENTIATOR/logs/tex /Users/tamerlannagaev/prodva/THE_DIFFERENTIATOR/logs/tex/log.tex");
 
     return SUCCESS;
 }
 
 
+void tex_dump_const(node_s* node) {
+    assert(node != NULL);
+
+    if (node->data >= 0) fprintf(GLOBAL_TEX_FILE, "%lg",   node->data);
+    else                 fprintf(GLOBAL_TEX_FILE, "(%lg)", node->data);
+
+    return;
+}
+
+
+void tex_dump_var(node_s* node) {
+    assert(node != NULL);
+
+    fprintf(GLOBAL_TEX_FILE, "x");
+
+    return;
+}
+
+
+void tex_dump_op(node_s* node) {
+    assert(node != NULL);
+
+    switch ((math_hash_e)node->data) {
+
+        case TYPE_PLUS:
+            tex_dump_plus(node);
+            return;
+
+        case TYPE_MINUS:
+            tex_dump_minus(node);
+            return;
+
+        case TYPE_MUL:
+            tex_dump_mul(node);
+            return;
+
+        case TYPE_DIV:
+            tex_dump_div(node);
+            return;
+
+        case TYPE_COS:
+            tex_dump_cos(node);
+            return;
+
+        case TYPE_SIN:
+            tex_dump_sin(node);
+            return;
+
+        default:
+            LOG_ERROR("Incorrect param");
+            return;
+    }
+}
+
+
+void tex_dump_plus(node_s* node) {
+    assert(node != NULL);
+
+    fprintf(GLOBAL_TEX_FILE, "(");
+
+    if (node->left != NULL) {
+        tex_dump_node(node->left);
+    } else {
+        LOG_ERROR("plus dont have left son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, " + ");
+
+    if (node->right != NULL) {
+        tex_dump_node(node->right);
+    } else {
+        LOG_ERROR("plus dont have right son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, ")");
+
+    return;
+}
+
+
+void tex_dump_minus(node_s* node) {
+    assert(node != NULL);
+
+    fprintf(GLOBAL_TEX_FILE, "(");
+
+    if (node->left != NULL) {
+        tex_dump_node(node->left);
+    } else {
+        LOG_ERROR("minus dont have left son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, " - ");
+
+    if (node->right != NULL) {
+        tex_dump_node(node->right);
+    } else {
+        LOG_ERROR("minus dont have right son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, ")");
+
+    return;
+}
+
+
+void tex_dump_mul(node_s* node) {
+    assert(node != NULL);
+
+    fprintf(GLOBAL_TEX_FILE, "(");
+
+    if (node->left != NULL) {
+        tex_dump_node(node->left);
+    } else {
+        LOG_ERROR("mul dont have left son");
+        return;
+    }
+
+    if (node->right != NULL) {
+        tex_dump_node(node->right);
+    } else {
+        LOG_ERROR("mul dont have right son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, ")");
+
+    return;
+}
+
+
+void tex_dump_div(node_s* node) {
+    assert(node != NULL);
+
+    fprintf(GLOBAL_TEX_FILE, "(frac{");
+
+    if (node->left != NULL) {
+        tex_dump_node(node->left);
+    } else {
+        LOG_ERROR("div dont have left son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, "}{");
+
+    if (node->right != NULL) {
+        tex_dump_node(node->right);
+    } else {
+        LOG_ERROR("div dont have right son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, "})");
+
+    return;
+}
+
+
+void tex_dump_cos(node_s* node) {
+    assert(node != NULL);
+
+    fprintf(GLOBAL_TEX_FILE, "\\cos{(");
+
+    if (node->left != NULL) {
+        tex_dump_node(node->left);
+    } else {
+        LOG_ERROR("cos dont have left son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, ")}");
+
+    return;
+}
+
+
+void tex_dump_sin(node_s* node) {
+    assert(node != NULL);
+
+    fprintf(GLOBAL_TEX_FILE, "\\sin{(");
+
+    if (node->left != NULL) {
+        tex_dump_node(node->left);
+    } else {
+        LOG_ERROR("sin dont have left son");
+        return;
+    }
+
+    fprintf(GLOBAL_TEX_FILE, ")}");
+
+    return;
+}
 

@@ -78,6 +78,7 @@ unsigned long djb2_hash(const unsigned char* str, const size_t size) {
     return hash;
 }
 
+
 unsigned long djb2_str_hash(const unsigned char* str) {
     assert(str != NULL);
 
@@ -234,6 +235,7 @@ error_code_e stat_get_blksize(const char* const file_name, size_t* const file_si
 
     return SUCCESS;
 }
+
 
 void _$(const int           num) {fprintf(stderr, "%d\n\n",       num);}
 void _$(const double        num) {fprintf(stderr, "%lg\n\n",      num);}

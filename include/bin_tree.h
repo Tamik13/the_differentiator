@@ -13,12 +13,20 @@ enum elem_type_e {
     NAT        = 0  // Not a type
 };
 
+enum math_hash_e {
+    TYPE_PLUS  = 177616,
+    TYPE_MINUS = 177618,
+    TYPE_MUL   = 177615,
+    TYPE_DIV   = 177620,
+    TYPE_SIN   = 193505807,
+    TYPE_COS   = 193488586
+};
+
 struct node_s {
     elem_type_e   type;
     bin_tree_elem data;
     node_s*       left;
     node_s*       right;
-    node_s*       parent;
 };
 
 struct bin_tree_s {
@@ -28,12 +36,17 @@ struct bin_tree_s {
 
 error_code_e bin_tree_assign (bin_tree_s* const bin_tree);
 error_code_e bin_tree_destroy(bin_tree_s* const bin_tree);
-error_code_e bin_tree_insert (bin_tree_s* const bin_tree, node_s** const node, node_s* parent, bin_tree_elem elem, elem_type_e elem_type);
+error_code_e bin_tree_insert (bin_tree_s* const bin_tree, node_s** const node, bin_tree_elem elem, elem_type_e elem_type);
 error_code_e bin_tree_del    (bin_tree_s* const bin_tree, node_s** const node);
 error_code_e bin_tree_verify (bin_tree_s* const bin_tree);
 
-void bin_tree_dmp                    (bin_tree_s* const bin_tree);
-error_code_e bin_tree_img            (bin_tree_s* const bin_tree);
-error_code_e bin_tree_print_preorder(bin_tree_s* const bin_tree, char** buffer);
+void         bin_tree_dmp           (bin_tree_s* const bin_tree);
+error_code_e bin_tree_img           (bin_tree_s* const bin_tree);
+void         dot_init_node          (FILE*       const dot_file, const node_s* const node,       const char* const color);
+void         dot_init_edge          (FILE*       const dot_file, const node_s* const first_node, const node_s* const second_node, const char* const color);
+error_code_e bin_tree_print_preorder(bin_tree_s* const bin_tree, char**  buffer);
+
+char        math_hash_to_char  (unsigned long hash);
+const char* elem_type_to_string(elem_type_e   elem_type);
 
 #endif

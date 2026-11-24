@@ -72,7 +72,7 @@ error_code_e bin_tree_destroy(bin_tree_s* const bin_tree) {
 }
 
 
-error_code_e bin_tree_insert(bin_tree_s* const bin_tree, node_s** const node, node_s* parent, bin_tree_elem elem, elem_type_e elem_type) {
+error_code_e bin_tree_insert(bin_tree_s* const bin_tree, node_s** const node, bin_tree_elem elem, elem_type_e elem_type) {
     assert(bin_tree != NULL);
     assert(node != NULL);
 
@@ -85,7 +85,6 @@ error_code_e bin_tree_insert(bin_tree_s* const bin_tree, node_s** const node, no
         return ALLOCATION_ERROR;
     }
     (*node)->type   = elem_type,
-    (*node)->parent = parent;
     (*node)->left   = NULL;
     (*node)->right  = NULL;
     (*node)->data   = elem;
@@ -216,6 +215,7 @@ void bin_tree_dmp(bin_tree_s* const bin_tree) {
         free(buffer);
         LOG_OK("void bin_tree");
         return;
+
     } if (error_code != SUCCESS) {
         free(buffer);
         LOG_ERROR("cant generate bin_tree img");
@@ -241,6 +241,7 @@ void bin_tree_dmp(bin_tree_s* const bin_tree) {
     }
 
     ssize_t count_read = 0;
+
     while ((count_read = read(dot_file, buffer, size)) > 0) {
         ssize_t new_ind = 0;
 
@@ -309,23 +310,24 @@ error_code_e bin_tree_img(bin_tree_s* const bin_tree) {
         )
 
         SAFE_CALL( stack_pop(&stack, &node), stack_destroy(&stack));
-        fprintf(dot_file, "\tnode%p [style=filled; fillcolor=\"" AQUA_HX "\" label = \"" BNT_MDF "\"]\n", (void*)*node, (*node)->data);
+        dot_init_node(dot_file, *node, AQUA_HX);
 
         if ((*node)->left != NULL && (*node)->right != NULL) {
 
-            fprintf(dot_file, "\tnode%p -> node%p [color=\"" GREEN_HX "\"]\n", (void*)*node, (void*)(*node)->left);
-            fprintf(dot_file, "\tnode%p -> node%p [color=\"" RED_HX   "\"]\n", (void*)*node, (void*)(*node)->right);
+            dot_init_edge(dot_file, *node, (*node)->left,  GREEN_HX);
+            dot_init_edge(dot_file, *node, (*node)->right, RED_HX);
+
             SAFE_CALL( stack_push(&stack, &(*node)->right), stack_destroy(&stack))
             SAFE_CALL( stack_push(&stack, &(*node)->left),  stack_destroy(&stack))
 
         } else if ((*node)->left != NULL) {
 
-            fprintf(dot_file, "\tnode%p -> node%p [color=\"" GREEN_HX "\"]\n", (void*)*node, (void*)(*node)->left);
+            dot_init_edge(dot_file, *node, (*node)->left,  GREEN_HX);
             SAFE_CALL( stack_push(&stack, &(*node)->left),  stack_destroy(&stack))
 
         } else if ((*node)->right != NULL) {
 
-            fprintf(dot_file, "\tnode%p -> node%p [color=\"" RED_HX   "\"]\n", (void*)*node, (void*)(*node)->right);
+            dot_init_edge(dot_file, *node, (*node)->right,  RED_HX);
             SAFE_CALL( stack_push(&stack, &(*node)->right), stack_destroy(&stack))
 
         }
@@ -351,3 +353,76 @@ error_code_e bin_tree_img(bin_tree_s* const bin_tree) {
     LOG_OK("graph graphic dmp successfully");
     return SUCCESS;
 }
+
+
+void dot_init_node(FILE* const dot_file, const node_s* const node, const char* const color) {
+    assert(dot_file != NULL);
+    assert(node     != NULL);
+
+    if   (node->type == TYPE_OP) fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = %c | type = %s\"]\n", (void*)node, color, math_hash_to_char(node->data), elem_type_to_string(node->type));
+    else                         fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = %lg | type = %s\"]\n", (void*)node, color, node->data, elem_type_to_string(node->type));
+
+    return;
+}
+
+
+void dot_init_edge(FILE* const dot_file, const node_s* const first_node, const node_s* const second_node, const char* const color) {
+    assert(dot_file   != NULL);
+    assert(first_node != NULL);
+
+    fprintf(dot_file, "\tnode%p -> node%p [color=\"%s\"]\n", (void*)first_node, (void*)second_node, color);
+
+    return;
+}
+
+
+char math_hash_to_char(unsigned long hash) {
+
+    switch (hash) {
+
+    case TYPE_PLUS:
+        return '+';
+
+    case TYPE_MINUS:
+        return '-';
+
+    case TYPE_MUL:
+        return '*';
+
+    case TYPE_DIV:
+        return '/';
+
+    case TYPE_SIN:
+        return 's';
+
+    case TYPE_COS:
+        return 'c';
+
+    default:
+        LOG_ERROR("Incorrect param");
+        return '\0';
+    }
+}
+
+
+const char* elem_type_to_string(elem_type_e elem_type) {
+
+    switch (elem_type) {
+
+        case TYPE_OP:
+            return "operation";
+
+        case TYPE_VAR:
+            return "var";
+
+        case TYPE_CONST:
+            return "const";
+
+        case NAT:
+        default:
+            LOG_ERROR("Incorrect param");
+            return NULL;
+    }
+}
+
+

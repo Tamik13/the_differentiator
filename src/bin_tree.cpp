@@ -359,8 +359,9 @@ void dot_init_node(FILE* const dot_file, const node_s* const node, const char* c
     assert(dot_file != NULL);
     assert(node     != NULL);
 
-    if   (node->type == TYPE_OP) fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = %c | type = %s\"]\n", (void*)node, color, math_hash_to_char(node->data), elem_type_to_string(node->type));
-    else                         fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = %lg | type = %s\"]\n", (void*)node, color, node->data, elem_type_to_string(node->type));
+    if      (node->type == TYPE_OP)    fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = %c | type = %s\"]\n",  (void*)node, color, math_hash_to_char(node->data), elem_type_to_string(node->type));
+    else if (node->type == TYPE_CONST) fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = %lg | type = %s\"]\n", (void*)node, color, node->data,                    elem_type_to_string(node->type));
+    else                               fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = x | type = %s\"]\n", (void*)node, color,                                  elem_type_to_string(node->type));
 
     return;
 }
@@ -399,7 +400,6 @@ char math_hash_to_char(unsigned long hash) {
         return 'c';
 
     default:
-        LOG_ERROR("Incorrect param");
         return '\0';
     }
 }

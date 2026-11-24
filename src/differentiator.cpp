@@ -15,7 +15,28 @@ ssize_t      read_to_buffer     (const char*         const file,     char*   buf
 node_s*      diff               (      node_s*             node);
 node_s*      new_node           (      elem_type_e         type,     double  value,        node_s* left, node_s* right);
 node_s*      copy_node          (      node_s*             node);
+// TODO: op_tree_init
 
+node_s* op_plus (node_s* first_node, node_s* second_node);
+node_s* op_minus(node_s* first_node, node_s* second_node);
+node_s* op_mul  (node_s* first_node, node_s* second_node);
+node_s* op_div  (node_s* first_node, node_s* second_node);
+node_s* op_sin  (node_s* node);
+node_s* op_cos  (node_s* node);
+
+node_s* diff_plus (node_s* node);
+node_s* diff_minus(node_s* node);
+node_s* diff_mul  (node_s* node);
+node_s* diff_div  (node_s* node);
+node_s* diff_sin  (node_s* node);
+node_s* diff_cos  (node_s* node);
+
+error_code_e open_tex();
+void         tex_dump_node();
+error_code_e close_tex();
+
+const char* const tex_file_name = " ";
+      FILE*       GLOBAL_TEX_FILE;
 
 int main() {
     log_start();
@@ -202,10 +223,12 @@ error_code_e string_to_node_elem(const char* string, node_s* node) {
         node->type = TYPE_OP;
         return SUCCESS;
 
-    } else {
-        node->data = hash;
+    } else if (strcmp(string, "x") == 0) {
+        node->data = 'x';
         node->type = TYPE_VAR;
         return SUCCESS;
+    } else {
+        return INCORRECT_PARAM;
     }
 }
 
@@ -226,24 +249,23 @@ node_s* diff(node_s* node) {
             switch ((math_hash_e)(node->data)) {
 
                 case TYPE_PLUS:
-                    return new_node(TYPE_OP, TYPE_PLUS, diff(node->left), diff(node->right));
+                    return diff_plus(node);
 
                 case TYPE_MINUS:
-                    return new_node(TYPE_OP, TYPE_MINUS, diff(node->left), diff(node->right));
+                    return diff_minus(node);
 
-                case TYPE_MUL: {
-                    node_s* diff_left  = diff(node->left);
-                    node_s* diff_right = diff(node->right);
-                    node_s* copy_left  = copy_node(node->left);
-                    node_s* copy_right = copy_node(node->right);
-                    return new_node(TYPE_OP, TYPE_PLUS,
-                                    new_node(TYPE_OP, TYPE_MUL, diff_left, copy_right),
-                                    new_node(TYPE_OP, TYPE_MUL, diff_right, copy_left));
-                }
+                case TYPE_MUL:
+                    return diff_mul(node);
 
                 case TYPE_DIV:
+                    return diff_div(node);
+
                 case TYPE_SIN:
+                    return diff_sin(node);
+
                 case TYPE_COS:
+                    return diff_cos(node);
+
                 default:
                     LOG_ERROR("incorrect param: node->data");
                     return NULL;
@@ -294,4 +316,129 @@ node_s* copy_node(node_s* node) {
 
     return node_copy;
 }
+
+
+node_s* op_plus(node_s* first_node, node_s* second_node) {
+    assert(first_node != NULL); assert(second_node != NULL);
+    return new_node(TYPE_OP, TYPE_PLUS, first_node, second_node);
+}
+
+
+node_s* op_minus(node_s* first_node, node_s* second_node) {
+    assert(first_node != NULL); assert(second_node != NULL);
+    return new_node(TYPE_OP, TYPE_MINUS, first_node, second_node);
+}
+
+
+node_s* op_mul(node_s* first_node, node_s* second_node) {
+    assert(first_node != NULL); assert(second_node != NULL);
+    return new_node(TYPE_OP, TYPE_MUL, first_node, second_node);
+}
+
+
+node_s* op_div(node_s* first_node, node_s* second_node) {
+    assert(first_node != NULL); assert(second_node != NULL);
+    return new_node(TYPE_OP, TYPE_DIV, first_node, second_node);
+}
+
+
+node_s* op_sin(node_s* node) {
+    assert(node != NULL);
+    return new_node(TYPE_OP, TYPE_SIN, node, NULL);
+}
+
+
+node_s* op_cos(node_s* node) {
+    assert(node != NULL);
+    return new_node(TYPE_OP, TYPE_COS, node, NULL);
+}
+
+
+node_s* diff_plus(node_s* node) {
+    assert(node != NULL);
+
+    return op_plus(diff(node->left), diff(node->right));
+}
+
+
+node_s* diff_minus(node_s* node) {
+    assert(node != NULL);
+
+    return op_minus(diff(node->left), diff(node->right));
+}
+
+
+node_s* diff_mul(node_s* node) {
+    assert(node != NULL);
+
+    node_s* diff_left  = diff(node->left);
+    node_s* diff_right = diff(node->right);
+    node_s* copy_left  = copy_node(node->left);
+    node_s* copy_right = copy_node(node->right);
+
+    return op_plus(op_mul(diff_left, copy_right), op_mul(diff_right, copy_left));
+}
+
+
+node_s* diff_div(node_s* node) {
+
+    node_s* diff_left  = diff(node->left);
+    node_s* diff_right = diff(node->right);
+    node_s* copy_left  = copy_node(node->left);
+    node_s* copy_right = copy_node(node->right);
+
+    return op_div(op_minus(op_mul(diff_left, copy_right), op_mul(copy_left, diff_right)), op_mul(copy_right, copy_right));
+}
+
+
+node_s* diff_sin(node_s* node) {
+    assert(node != NULL);
+
+    return op_cos(copy_node(node->left));
+}
+
+
+node_s* diff_cos(node_s* node) {
+    assert(node != NULL);
+
+    return op_mul(new_node(TYPE_CONST, -1, NULL, NULL), op_sin(copy_node(node->left)));
+}
+
+
+error_code_e open_tex() {
+    GLOBAL_TEX_FILE = fopen(tex_file_name, "r");
+
+    if (GLOBAL_TEX_FILE) {
+        LOG_ERROR("cant open tex file");
+        return ERROR_DURING_OPEN;
+    }
+
+    fprintf(GLOBAL_TEX_FILE,
+            "\\documentclass[12pt]{article}\n"
+            "\\usepackage[T2A]{fontenc}\n"
+            "\\usepackage[russian]{babel}\n"
+            "\\begin{document}\n");
+
+    return SUCCESS;
+}
+
+void tex_dump_node() {
+
+    return;
+}
+
+
+error_code_e close_tex() {
+    fprintf(GLOBAL_TEX_FILE,
+            "\end{document}");
+
+    if (fclose(GLOBAL_TEX_FILE) == EOF) {
+        LOG_ERROR("cant close tex file");
+        return ERROR_DURING_CLOSE;
+    }
+
+    return SUCCESS;
+}
+
+
 

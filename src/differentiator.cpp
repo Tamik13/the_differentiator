@@ -122,6 +122,65 @@ error_code_e branch_simplify(bin_tree_s* bin_tree, node_s* node) {
 
         bin_tree_del_node(bin_tree, &node->left);
         bin_tree_del_node(bin_tree, &node->right);
+    } else if (node->type == TYPE_OP) {
+
+        if (node->data == OP_MUL) {
+
+            if ((node->left->data  == 0 && node->left->type  == TYPE_CONST) ||
+                (node->right->data == 0 && node->right->type == TYPE_CONST)) {
+
+                node->data = 0;
+                node->type = TYPE_CONST;
+                bin_tree_del_node(bin_tree, &node->left);
+                bin_tree_del_node(bin_tree, &node->right);
+                node->right = NULL;
+                node->left  = NULL;
+
+            } else if (node->left->data == 1 && node->left->type  == TYPE_CONST) {
+
+                bin_tree_del_node(bin_tree, &node->left);
+                node_s* right_node = node->right;
+                node->type  = node->right->type;
+                node->data  = node->right->data;
+                node->left  = node->right->left;
+                node->right = node->right->right;
+                bin_tree_del_node(bin_tree, &right_node);
+
+            } else if (node->right->data == 1 && node->right->type  == TYPE_CONST) {
+
+                bin_tree_del_node(bin_tree, &node->left);
+                node_s* left_node = node->left;
+                node->type  = node->left->type;
+                node->data  = node->left->data;
+                node->right = node->left->right;
+                node->left  = node->left->left;
+                bin_tree_del_node(bin_tree, &left_node);
+            }
+        }
+
+        if (node->data == OP_PLUS || node->data == OP_MINUS) {
+
+            if (node->left->data == 0  && node->left->type == TYPE_CONST) {
+
+                bin_tree_del_node(bin_tree, &node->left);
+                node_s* right_node = node->right;
+                node->type  = node->right->type;
+                node->data  = node->right->data;
+                node->left  = node->right->left;
+                node->right = node->right->right;
+                bin_tree_del_node(bin_tree, &right_node);
+
+            } else if (node->right->data == 0 && node->right->type  == TYPE_CONST) {
+
+                bin_tree_del_node(bin_tree, &node->left);
+                node_s* left_node = node->left;
+                node->type  = node->left->type;
+                node->data  = node->left->data;
+                node->right = node->left->right;
+                node->left  = node->left->left;
+                bin_tree_del_node(bin_tree, &left_node);
+            }
+        }
     }
 
     bin_tree_dmp(bin_tree);
@@ -399,8 +458,6 @@ void tex_dump_minus(node_s* node) {
 void tex_dump_mul(node_s* node) {
     assert(node != NULL);
 
-    fprintf(GLOBAL_TEX_FILE, "(");
-
     if (node->left != NULL) {
         tex_dump_node(node->left);
     } else {
@@ -414,8 +471,6 @@ void tex_dump_mul(node_s* node) {
         LOG_ERROR("mul dont have right son");
         return;
     }
-
-    fprintf(GLOBAL_TEX_FILE, ")");
 
     return;
 }

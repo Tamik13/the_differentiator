@@ -29,10 +29,15 @@ int main() {
     diff_tree.count_nodes = 5;
     bin_tree_dmp(&diff_tree);
 
+    tex_dump_new_formula(bin_tree.root);
+
     SAFE_CALL( branch_simplify(&bin_tree, bin_tree.root), )
-    SAFE_CALL( branch_simplify(&diff_tree, diff_tree.root), )
 
     tex_dump_new_formula(bin_tree.root);
+    tex_dump_new_formula(diff_tree.root);
+
+    SAFE_CALL( branch_simplify(&diff_tree, diff_tree.root), )
+
     tex_dump_new_formula(diff_tree.root);
 
     log_end();

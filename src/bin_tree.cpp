@@ -100,6 +100,7 @@ error_code_e bin_tree_del_node(bin_tree_s* const bin_tree, node_s** const node) 
     assert(bin_tree->count_nodes > 0);
 
     free(*node);
+    *node = NULL;
 
     LOG_OK("bin_tree_del successfully");
     return SUCCESS;

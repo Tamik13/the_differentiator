@@ -17,6 +17,7 @@ clang++ -std=c++20 -O1 -g3 \
   ../THE_DIFFERENTIATOR/src/stack.cpp \
   ../THE_DIFFERENTIATOR/src/bin_tree.cpp \
   ../THE_DIFFERENTIATOR/src/differentiator.cpp \
+  ../THE_DIFFERENTIATOR/src/main.cpp \
   -o /Users/tamerlannagaev/prodva/THE_DIFFERENTIATOR/bin/dbg_differentiator
 
 ../THE_DIFFERENTIATOR/bin/dbg_differentiator

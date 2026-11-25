@@ -1,259 +1,20 @@
 #include <assert.h>
-#include <unistd.h>
-#include <fcntl.h>
+#include <string.h>
 #include <math.h>
 
-#include "../include/bin_tree.h"
-#include "../include/stack.h"
+#include "../include/differentiator.h"
 
-
-error_code_e op_tree_read       (      bin_tree_s*         bin_tree, char**  buffer);
-error_code_e op_tree_init       (      bin_tree_s*         bin_tree, char**  buffer);
-error_code_e string_to_node_elem(const char*               string,   node_s* node);
-ssize_t      read_to_buffer     (const char*         const file,     char*   buffer);
-node_s*      diff               (      node_s*             node);
-node_s*      new_node           (      elem_type_e         type,     double  value,        node_s* left, node_s* right);
-node_s*      copy_node          (      node_s*             node);
-error_code_e branch_simplify    (      bin_tree_s*         bin_tree, node_s* node);
-double       node_solve         (      bin_tree_s*         bin_tree, node_s* node);
-// TODO: op_tree_init
-
-node_s* op_plus (node_s* first_node, node_s* second_node);
-node_s* op_minus(node_s* first_node, node_s* second_node);
-node_s* op_mul  (node_s* first_node, node_s* second_node);
-node_s* op_div  (node_s* first_node, node_s* second_node);
-node_s* op_sin  (node_s* node);
-node_s* op_cos  (node_s* node);
-
-node_s* diff_plus (node_s* node);
-node_s* diff_minus(node_s* node);
-node_s* diff_mul  (node_s* node);
-node_s* diff_div  (node_s* node);
-node_s* diff_sin  (node_s* node);
-node_s* diff_cos  (node_s* node);
-
-error_code_e open_tex            ();
-void         tex_dump_node       (node_s* node);
-void         tex_dump_new_formula(node_s* node);
-error_code_e close_tex           ();
-
-void tex_dump_const(node_s* node);
-void tex_dump_var  (node_s* node);
-void tex_dump_op   (node_s* node);
-
-void tex_dump_plus (node_s* node);
-void tex_dump_minus(node_s* node);
-void tex_dump_mul  (node_s* node);
-void tex_dump_div  (node_s* node);
-void tex_dump_cos  (node_s* node);
-void tex_dump_sin  (node_s* node);
+                       //  hash    new_op_node  diff_op     tex_dump
+op_info op_info_arr[] = {{177615,    op_mul,   diff_mul,   tex_dump_mul,   OP_MUL},
+                         {177616,    op_plus,  diff_plus,  tex_dump_plus,  OP_PLUS},
+                         {177618,    op_minus, diff_minus, tex_dump_minus, OP_MINUS},
+                         {177620,    op_div,   diff_div,   tex_dump_div,   OP_DIV},
+                         {193488586, op_cos,   diff_cos,   tex_dump_cos,   OP_COS},
+                         {193505807, op_sin,   diff_sin,   tex_dump_sin,   OP_SIN}};
 
 const char* const tex_file_name   = "./logs/tex/log.tex";
       FILE*       GLOBAL_TEX_FILE = NULL;
 
-int main() {
-    SAFE_CALL( log_start(), )
-    SAFE_CALL( open_tex(),  )
-
-
-    char* buffer        = NULL;
-    bin_tree_s bin_tree = {};
-    bin_tree_assign(&bin_tree);
-    SAFE_CALL( op_tree_read(&bin_tree, &buffer), );
-
-    bin_tree_s diff_tree = {};
-
-    diff_tree.root = diff(bin_tree.root);
-    assert(diff_tree.root != NULL);
-
-    diff_tree.count_nodes = 5;
-    bin_tree_dmp(&diff_tree);
-
-    SAFE_CALL( branch_simplify(&bin_tree, bin_tree.root), )
-    SAFE_CALL( branch_simplify(&diff_tree, diff_tree.root), )
-
-    tex_dump_new_formula(bin_tree.root);
-    tex_dump_new_formula(diff_tree.root);
-
-    log_end();
-    close_tex();
-    return 0;
-}
-
-
-error_code_e op_tree_read(bin_tree_s* bin_tree, char** buffer) {
-    assert(bin_tree != NULL);
-
-    const char* data_base_name = "./src/data.txt";
-
-    size_t  size       = 0;
-    ssize_t count_read = -1;
-    SAFE_CALL( stat_get_size(data_base_name, &size), )
-
-    (*buffer) = (char*)calloc(size, sizeof(char));
-    if ((*buffer) == NULL) {
-        LOG_ERROR("error during buffer allocation");
-        return ALLOCATION_ERROR;
-    }
-
-    int data_base = open(data_base_name, O_RDONLY);
-
-    if (data_base == -1) {
-        free((*buffer));
-        LOG_ERROR("cant open data_base");
-        return ERROR_DURING_OPEN;
-    }
-
-    if ((count_read = read(data_base, (*buffer), size - 1)) == -1) {
-        LOG_ERROR("cant read data_base");
-        return ERROR_DURING_READ;
-    }
-
-    assert(count_read > 0 && (size_t)count_read < size);
-
-    SAFE_CALL( op_tree_init(bin_tree, buffer), );
-
-    if (close(data_base) == -1) {
-        LOG_ERROR("error during close data_base");
-        return ERROR_DURING_CLOSE;
-    }
-
-    bin_tree_dmp(bin_tree);
-
-    LOG_OK("akinator_read successfully");
-    return SUCCESS;
-}
-
-
-error_code_e op_tree_init(bin_tree_s* bin_tree, char** buffer) {
-    assert(bin_tree != NULL);
-
-    ssize_t count_read = read_to_buffer("./src/data.txt", *buffer); //TODO: DEL SECOND READ FROM FILE
-
-    if (count_read == -1) {
-        LOG_ERROR("error during read data.txt");
-        return ERROR_DURING_READ;
-    }
-
-    ssize_t  data_ind = 1;
-    stack_s  parents  = {};
-    node_s** node     = &bin_tree->root;
-    SAFE_CALL ( bin_tree_insert(bin_tree, node, NAN, NAT), free((*buffer)))
-    STACK_INIT( parents, 2);
-    SAFE_CALL ( stack_push(&parents, node), free((*buffer)))
-
-    for (ssize_t ind = 1; ind < count_read; ind++) {
-
-        if ((*buffer)[ind] == '(') {
-
-            (*buffer)[ind] = '\0';
-
-            if (isnan((*node)->data)) {
-                string_to_node_elem(&(*buffer)[data_ind], *node);
-            }
-
-            data_ind = ind + 1;
-            SAFE_CALL( stack_push(&parents, node), free((*buffer)))
-
-            if ((*node)->left == NULL) {
-                SAFE_CALL( bin_tree_insert(bin_tree, &(*node)->left, NAN, NAT), free((*buffer)))
-                node = &(*node)->left;
-
-            } else if ((*node)->right == NULL) {
-                SAFE_CALL( bin_tree_insert(bin_tree, &(*node)->right, NAN, NAT), free((*buffer)))
-                node = &(*node)->right;
-
-            } else {
-                LOG_ERROR("tread son");
-                return INCORRECT_PARAM;
-            }
-
-        } else if ((*buffer)[ind] == ')') {
-
-            (*buffer)[ind] = '\0';
-
-            if (isnan((*node)->data)) {
-                string_to_node_elem(&(*buffer)[data_ind], *node);
-            }
-
-            data_ind = ind + 1;
-            SAFE_CALL( stack_pop(&parents, &node), free((*buffer)))
-
-        }
-    }
-
-    bin_tree_dmp(bin_tree);
-
-    LOG_OK("akinator_read successfully");
-    return SUCCESS;
-}
-
-
-ssize_t read_to_buffer(const char* const file_name, char* buffer) {
-    assert(file_name != NULL);
-    assert(buffer    != NULL);
-
-    size_t  size = 0;
-    ssize_t count_read = -1;
-    SAFE_CALL( stat_get_size(file_name, &size), )
-
-    buffer = (char*)calloc(size, sizeof(char));
-    if (buffer == NULL) {
-        LOG_ERROR("error during buffer allocation");
-        return ALLOCATION_ERROR;
-    }
-
-    int file = open(file_name, O_RDONLY);
-
-    if (file == -1) {
-        free(buffer);
-        LOG_ERROR("cant open data_base");
-        return -1;
-    }
-
-    if ((count_read = read(file, buffer, size - 1)) == -1) {
-        LOG_ERROR("cant read data_base");
-        return -1;
-    }
-
-    if (count_read <= 0 && (size_t)count_read > size) {
-        LOG_ERROR("count_read > size or count_read <= 0");
-        close(file);
-        return -1;
-    }
-
-    if (close(file) == -1) {
-        LOG_ERROR("error during close data_base");
-        return ERROR_DURING_CLOSE;
-    }
-
-    return count_read;
-}
-
-
-error_code_e string_to_node_elem(const char* string, node_s* node) {
-    assert(string != NULL);
-
-    unsigned long hash = djb2_str_hash((const unsigned char*)string);
-
-    if (sscanf(string, "%lg", &node->data) == 1) {
-        node->type = TYPE_CONST;
-        return SUCCESS;
-
-    } else if (math_hash_to_char(hash) != '\0') { //TODO: MAKE ARR WITH OP INFO STRUCT
-        node->data = hash;
-        node->type = TYPE_OP;
-        return SUCCESS;
-
-    } else if (strcmp(string, "x") == 0) {  //TODO: ARR WITH VARS
-        node->data = 'x';
-        node->type = TYPE_VAR;
-        return SUCCESS;
-
-    } else {
-        return INCORRECT_PARAM;
-    }
-}
 
 
 node_s* diff(node_s* node) {
@@ -268,38 +29,12 @@ node_s* diff(node_s* node) {
             return new_node(TYPE_CONST, 1, NULL, NULL);
 
         case TYPE_OP:
-
-            switch ((math_hash_e)(node->data)) {
-
-                case TYPE_PLUS: //TODO: ARR WITH FUNC PTR
-                    return diff_plus(node);
-
-                case TYPE_MINUS:
-                    return diff_minus(node);
-
-                case TYPE_MUL:
-                    return diff_mul(node);
-
-                case TYPE_DIV:
-                    return diff_div(node);
-
-                case TYPE_SIN:
-                    return diff_sin(node);
-
-                case TYPE_COS:
-                    return diff_cos(node);
-
-                default:
-                    LOG_ERROR("incorrect param: node->data");
-                    return NULL;
-
-            }
+            return op_info_arr[(size_t)(node->data)].diff_op(node);
 
         case NAT:
         default:
-            LOG_ERROR("incorrect type: node->type");
+            LOG_ERROR("Incorrect param");
             return NULL;
-
     }
 
     return NULL;
@@ -379,21 +114,23 @@ double node_solve(bin_tree_s* bin_tree, node_s* node) {
     assert(node->left  != NULL);
     assert(node->right != NULL);
 
-    switch ((math_hash_e)node->data) {
-            case TYPE_PLUS:
+
+
+    switch ((op_type_e)node->data) {
+            case OP_PLUS:
                 return node->left->data + node->right->data;
 
-            case TYPE_MINUS:
+            case OP_MINUS:
                 return node->left->data - node->right->data;
 
-            case TYPE_MUL:
+            case OP_MUL:
                 return node->left->data * node->right->data;
 
-            case TYPE_DIV:
+            case OP_DIV:
                 return node->left->data / node->right->data;
 
-            case TYPE_SIN:
-            case TYPE_COS:
+            case OP_SIN:
+            case OP_COS:
             default:
                 LOG_ERROR("Incorrect param");
         }
@@ -405,37 +142,37 @@ double node_solve(bin_tree_s* bin_tree, node_s* node) {
 
 node_s* op_plus(node_s* first_node, node_s* second_node) {
     assert(first_node != NULL); assert(second_node != NULL);
-    return new_node(TYPE_OP, TYPE_PLUS, first_node, second_node);
+    return new_node(TYPE_OP, OP_PLUS, first_node, second_node);
 }
 
 
 node_s* op_minus(node_s* first_node, node_s* second_node) {
     assert(first_node != NULL); assert(second_node != NULL);
-    return new_node(TYPE_OP, TYPE_MINUS, first_node, second_node);
+    return new_node(TYPE_OP, OP_MINUS, first_node, second_node);
 }
 
 
 node_s* op_mul(node_s* first_node, node_s* second_node) {
     assert(first_node != NULL); assert(second_node != NULL);
-    return new_node(TYPE_OP, TYPE_MUL, first_node, second_node);
+    return new_node(TYPE_OP, OP_MUL, first_node, second_node);
 }
 
 
 node_s* op_div(node_s* first_node, node_s* second_node) {
     assert(first_node != NULL); assert(second_node != NULL);
-    return new_node(TYPE_OP, TYPE_DIV, first_node, second_node);
+    return new_node(TYPE_OP, OP_DIV, first_node, second_node);
 }
 
 
-node_s* op_sin(node_s* node) {
-    assert(node != NULL);
-    return new_node(TYPE_OP, TYPE_SIN, node, NULL);
+node_s* op_sin(node_s* first_node, node_s* second_node) {
+    assert(first_node != NULL);
+    return new_node(TYPE_OP, OP_SIN, first_node, NULL);
 }
 
 
-node_s* op_cos(node_s* node) {
-    assert(node != NULL);
-    return new_node(TYPE_OP, TYPE_COS, node, NULL);
+node_s* op_cos(node_s* first_node, node_s* second_node) {
+    assert(first_node != NULL);
+    return new_node(TYPE_OP, OP_COS, first_node, NULL);
 }
 
 
@@ -479,14 +216,14 @@ node_s* diff_div(node_s* node) {
 node_s* diff_sin(node_s* node) {
     assert(node != NULL);
 
-    return op_cos(copy_node(node->left));
+    return op_cos(copy_node(node->left), NULL);
 }
 
 
 node_s* diff_cos(node_s* node) {
     assert(node != NULL);
 
-    return op_mul(new_node(TYPE_CONST, -1, NULL, NULL), op_sin(copy_node(node->left)));
+    return op_mul(new_node(TYPE_CONST, -1, NULL, NULL), op_sin(copy_node(node->left), NULL));
 }
 
 
@@ -580,36 +317,7 @@ void tex_dump_var(node_s* node) {
 void tex_dump_op(node_s* node) {
     assert(node != NULL);
 
-    switch ((math_hash_e)node->data) {
-
-        case TYPE_PLUS:
-            tex_dump_plus(node);
-            return;
-
-        case TYPE_MINUS:
-            tex_dump_minus(node);
-            return;
-
-        case TYPE_MUL:
-            tex_dump_mul(node);
-            return;
-
-        case TYPE_DIV:
-            tex_dump_div(node);
-            return;
-
-        case TYPE_COS:
-            tex_dump_cos(node);
-            return;
-
-        case TYPE_SIN:
-            tex_dump_sin(node);
-            return;
-
-        default:
-            LOG_ERROR("Incorrect param");
-            return;
-    }
+    op_info_arr[(size_t)node->data].tex_dump(node);
 }
 
 
@@ -752,5 +460,29 @@ void tex_dump_sin(node_s* node) {
     fprintf(GLOBAL_TEX_FILE, ")}");
 
     return;
+}
+
+
+ssize_t op_hash_bin_psk(unsigned long hash) {
+    ssize_t l = 0, r = sizeof(op_info_arr) / sizeof(op_info_arr[0]) - 1;
+
+    while (l < r) {
+        assert(l <= r);
+        ssize_t m = (l + r) / 2;
+
+        if (op_info_arr[m].hash == hash) {
+            return (size_t)op_info_arr[m].number;
+        } else if (op_info_arr[m].hash < hash) {
+            l = m + 1;
+        } else {
+            r = m - 1;
+        }
+    }
+
+    if (op_info_arr[l].hash == hash) {
+        return (size_t)op_info_arr[l].number;
+    }
+
+    return -1;
 }
 

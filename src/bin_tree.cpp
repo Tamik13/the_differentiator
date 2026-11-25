@@ -312,7 +312,7 @@ error_code_e bin_tree_img(bin_tree_s* const bin_tree) {
         )
 
         SAFE_CALL( stack_pop(&stack, &node), stack_destroy(&stack));
-        dot_init_node(dot_file, *node, AQUA_HX);
+        dot_init_node(dot_file, *node);
 
         if ((*node)->left != NULL && (*node)->right != NULL) {
 
@@ -357,13 +357,13 @@ error_code_e bin_tree_img(bin_tree_s* const bin_tree) {
 }
 
 
-void dot_init_node(FILE* const dot_file, const node_s* const node, const char* const color) {
+void dot_init_node(FILE* const dot_file, const node_s* const node) {
     assert(dot_file != NULL);
     assert(node     != NULL);
 
-    if      (node->type == TYPE_OP)    fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = %c | type = %s\"]\n",  (void*)node, color, math_hash_to_char(node->data), elem_type_to_string(node->type));
-    else if (node->type == TYPE_CONST) fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = %lg | type = %s\"]\n", (void*)node, color, node->data,                    elem_type_to_string(node->type));
-    else                               fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"%s\"; label= \" data = x | type = %s\"]\n", (void*)node, color,                                  elem_type_to_string(node->type));
+    if      (node->type == TYPE_OP)    fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"" AQUA_HX "\"; label= \" data = %c | type = %s\"]\n", (void*)node, math_hash_to_char(node->data), elem_type_to_string(node->type));
+    else if (node->type == TYPE_CONST) fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"" RED_HX "\"; label= \" data = %lg | type = %s\"]\n", (void*)node, node->data,                    elem_type_to_string(node->type));
+    else                               fprintf(dot_file, "\tnode%p [style=filled; shape=Mrecord;  fillcolor=\"" GREEN_HX "\"; label= \" data = x | type = %s\"]\n", (void*)node,                                elem_type_to_string(node->type));
 
     return;
 }
@@ -383,22 +383,22 @@ char math_hash_to_char(unsigned long hash) {
 
     switch (hash) {
 
-    case TYPE_PLUS:
+    case OP_PLUS:
         return '+';
 
-    case TYPE_MINUS:
+    case OP_MINUS:
         return '-';
 
-    case TYPE_MUL:
+    case OP_MUL:
         return '*';
 
-    case TYPE_DIV:
+    case OP_DIV:
         return '/';
 
-    case TYPE_SIN:
+    case OP_SIN:
         return 's';
 
-    case TYPE_COS:
+    case OP_COS:
         return 'c';
 
     default:

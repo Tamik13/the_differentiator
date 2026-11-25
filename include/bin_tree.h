@@ -13,13 +13,13 @@ enum elem_type_e {
     NAT        = 0  // Not a type
 };
 
-enum math_hash_e {
-    TYPE_PLUS  = 177616,
-    TYPE_MINUS = 177618,
-    TYPE_MUL   = 177615,
-    TYPE_DIV   = 177620,
-    TYPE_SIN   = 193505807,
-    TYPE_COS   = 193488586
+enum op_type_e {
+    OP_PLUS  = 0,
+    OP_MINUS = 1,
+    OP_MUL   = 2,
+    OP_DIV   = 3,
+    OP_SIN   = 4,
+    OP_COS   = 5
 };
 
 struct node_s {
@@ -42,7 +42,7 @@ error_code_e bin_tree_verify  (bin_tree_s* const bin_tree);
 
 void         bin_tree_dmp           (bin_tree_s* const bin_tree);
 error_code_e bin_tree_img           (bin_tree_s* const bin_tree);
-void         dot_init_node          (FILE*       const dot_file, const node_s* const node,       const char* const color);
+void         dot_init_node          (FILE*       const dot_file, const node_s* const node);
 void         dot_init_edge          (FILE*       const dot_file, const node_s* const first_node, const node_s* const second_node, const char* const color);
 error_code_e bin_tree_print_preorder(bin_tree_s* const bin_tree, char**  buffer);
 

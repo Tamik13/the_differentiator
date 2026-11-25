@@ -14,8 +14,10 @@ struct op_info {
 
 ssize_t op_hash_bin_psk(unsigned long hash);
 
-node_s*      new_node           (      elem_type_e         type,     double  value,        node_s* left, node_s* right);
-node_s*      copy_node          (      node_s*             node);
+node_s* new_node (elem_type_e type, double value, node_s* left, node_s* right);
+node_s* copy_node(node_s*     node);
+
+node_s* copy_branch(node_s* node);
 
 node_s*      diff               (      node_s*             node);
 error_code_e branch_simplify    (      bin_tree_s*         bin_tree, node_s* node);

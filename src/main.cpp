@@ -98,7 +98,7 @@ error_code_e op_tree_init(bin_tree_s* bin_tree, char** buffer) {
 
     bin_tree_dmp(bin_tree);
 
-    LOG_OK("akinator_read successfully");
+    LOG_OK("op_tree_read successfully");
     return SUCCESS;
 }
 

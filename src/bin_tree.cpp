@@ -157,7 +157,7 @@ error_code_e bin_tree_print_preorder(bin_tree_s* const bin_tree, char** buffer) 
 
     while (stack.size > 0) {
         ON_DBG(
-        if (cnt++ > bin_tree->count_nodes * 3) {
+        if (cnt++ > bin_tree->count_nodes * 10) {
             LOG_ERROR("infinite cycle");
             return INCORRECT_SIZE;
         }
@@ -305,7 +305,7 @@ error_code_e bin_tree_img(bin_tree_s* const bin_tree) {
 
     while (stack.size > 0) {
         ON_DBG(
-        if (cnt++ > bin_tree->count_nodes * 3) {
+        if (cnt++ > bin_tree->count_nodes * 10) {
             LOG_ERROR("infinite cycle");
             return INCORRECT_SIZE;
         }

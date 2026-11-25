@@ -14,12 +14,12 @@ enum elem_type_e {
 };
 
 enum op_type_e {
-    OP_PLUS  = 0,
-    OP_MINUS = 1,
-    OP_MUL   = 2,
+    OP_MUL   = 0,
+    OP_PLUS  = 1,
+    OP_MINUS = 2,
     OP_DIV   = 3,
-    OP_SIN   = 4,
-    OP_COS   = 5
+    OP_COS   = 4,
+    OP_SIN   = 5
 };
 
 struct node_s {

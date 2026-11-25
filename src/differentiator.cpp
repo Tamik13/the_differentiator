@@ -76,15 +76,35 @@ node_s* copy_node(node_s* node) {
 }
 
 
+node_s* copy_branch(node_s* node) {
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node_s* node_copy = copy_node  (node);
+    node_copy->left   = copy_branch(node->left);
+    node_copy->right  = copy_branch(node->right);
+
+    return node_copy;
+}
+
+
 error_code_e branch_simplify(bin_tree_s* bin_tree, node_s* node) {
     assert(node != NULL);
 
-    if (node->left  == NULL || node->right == NULL) {
+    if (node->left != NULL) {
+        SAFE_CALL( branch_simplify(bin_tree, node->left), )
+    }
+
+    if (node->right != NULL) {
+        SAFE_CALL( branch_simplify(bin_tree, node->right), )
+    }
+
+    if (node->left == NULL || node->right == NULL) {
         return SUCCESS;
     }
 
-    branch_simplify(bin_tree, node->left);
-    branch_simplify(bin_tree, node->right);
 
     if (node->left->type == TYPE_CONST && node->right->type == TYPE_CONST) {
         assert(node->type == TYPE_OP);
@@ -105,6 +125,7 @@ error_code_e branch_simplify(bin_tree_s* bin_tree, node_s* node) {
     }
 
     bin_tree_dmp(bin_tree);
+    LOG_OK("brunch simplify successfully");
     return SUCCESS;
 }
 
@@ -195,8 +216,8 @@ node_s* diff_mul(node_s* node) {
 
     node_s* diff_left  = diff(node->left);
     node_s* diff_right = diff(node->right);
-    node_s* copy_left  = copy_node(node->left);
-    node_s* copy_right = copy_node(node->right);
+    node_s* copy_left  = copy_branch(node->left);
+    node_s* copy_right = copy_branch(node->right);
 
     return op_plus(op_mul(diff_left, copy_right), op_mul(diff_right, copy_left));
 }
@@ -206,8 +227,8 @@ node_s* diff_div(node_s* node) {
 
     node_s* diff_left  = diff(node->left);
     node_s* diff_right = diff(node->right);
-    node_s* copy_left  = copy_node(node->left);
-    node_s* copy_right = copy_node(node->right);
+    node_s* copy_left  = copy_branch(node->left);
+    node_s* copy_right = copy_branch(node->right);
 
     return op_div(op_minus(op_mul(diff_left, copy_right), op_mul(copy_left, diff_right)), op_mul(copy_right, copy_right));
 }
@@ -216,14 +237,14 @@ node_s* diff_div(node_s* node) {
 node_s* diff_sin(node_s* node) {
     assert(node != NULL);
 
-    return op_cos(copy_node(node->left), NULL);
+    return op_mul(op_cos(copy_branch(node->left), NULL), diff(node->left));
 }
 
 
 node_s* diff_cos(node_s* node) {
     assert(node != NULL);
 
-    return op_mul(new_node(TYPE_CONST, -1, NULL, NULL), op_sin(copy_node(node->left), NULL));
+    return op_mul(diff(node->left), op_mul(new_node(TYPE_CONST, -1, NULL, NULL), op_sin(copy_branch(node->left), NULL)));
 }
 
 

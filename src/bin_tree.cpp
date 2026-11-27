@@ -101,6 +101,7 @@ error_code_e bin_tree_del_node(bin_tree_s* const bin_tree, node_s** const node) 
 
     free(*node);
     *node = NULL;
+    bin_tree->count_nodes--;
 
     LOG_OK("bin_tree_del successfully");
     return SUCCESS;

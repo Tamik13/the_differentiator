@@ -4,7 +4,7 @@
 
 #include "../include/differentiator.h"
 
-                       //  hash    new_op_node  diff_op     tex_dump
+                       //  hash    new_op_node  diff_op     tex_dump       number
 op_info op_info_arr[] = {{177615,    op_mul,   diff_mul,   tex_dump_mul,   OP_MUL},
                          {177616,    op_plus,  diff_plus,  tex_dump_plus,  OP_PLUS},
                          {177618,    op_minus, diff_minus, tex_dump_minus, OP_MINUS},
@@ -41,6 +41,18 @@ node_s* diff(node_s* node) {
 }
 
 
+void init_node(node_s* node, elem_type_e type, double value, node_s* left, node_s* right) {
+    assert(node != NULL);
+
+    node->data  = value;
+    node->left  = left;
+    node->right = right;
+    node->type  = type;
+
+    return;
+}
+
+
 node_s* new_node(elem_type_e type, double value, node_s* left, node_s* right) {
 
     node_s* node = (node_s*)calloc(1, sizeof(node_s));
@@ -49,10 +61,7 @@ node_s* new_node(elem_type_e type, double value, node_s* left, node_s* right) {
         return NULL;
     }
 
-    node->data  = value;
-    node->left  = left;
-    node->right = right;
-    node->type  = type;
+    init_node(node, type, value, left, right);
 
     return node;
 }
@@ -67,10 +76,7 @@ node_s* copy_node(node_s* node) {
         return NULL;
     }
 
-    node_copy->data  = node->data;
-    node_copy->left  = node->left;
-    node_copy->right = node->right;
-    node_copy->type  = node->type;
+    init_node(node_copy, node->type, node->data, node->left, node->right);
 
     return node_copy;
 }
@@ -105,83 +111,10 @@ error_code_e branch_simplify(bin_tree_s* bin_tree, node_s* node) {
         return SUCCESS;
     }
 
-
-    if (node->left->type == TYPE_CONST && node->right->type == TYPE_CONST) {
-        assert(node->type == TYPE_OP);
-
-        double new_data = node_solve(bin_tree, node);
-        if (isnan(new_data)) {
-            LOG_ERROR("cant solve node");
-            return INCORRECT_PARAM;
-        }
-
-        node->data  = new_data;
-        node->left  = NULL;
-        node->right = NULL;
-        node->type  = TYPE_CONST;
-
-        bin_tree_del_node(bin_tree, &node->left);
-        bin_tree_del_node(bin_tree, &node->right);
-    } else if (node->type == TYPE_OP) {
-
-        if (node->data == OP_MUL) {
-
-            if ((node->left->data  == 0 && node->left->type  == TYPE_CONST) ||
-                (node->right->data == 0 && node->right->type == TYPE_CONST)) {
-
-                node->data = 0;
-                node->type = TYPE_CONST;
-                bin_tree_del_node(bin_tree, &node->left);
-                bin_tree_del_node(bin_tree, &node->right);
-                node->right = NULL;
-                node->left  = NULL;
-
-            } else if (node->left->data == 1 && node->left->type  == TYPE_CONST) {
-
-                bin_tree_del_node(bin_tree, &node->left);
-                node_s* right_node = node->right;
-                node->type  = node->right->type;
-                node->data  = node->right->data;
-                node->left  = node->right->left;
-                node->right = node->right->right;
-                bin_tree_del_node(bin_tree, &right_node);
-
-            } else if (node->right->data == 1 && node->right->type  == TYPE_CONST) {
-
-                bin_tree_del_node(bin_tree, &node->left);
-                node_s* left_node = node->left;
-                node->type  = node->left->type;
-                node->data  = node->left->data;
-                node->right = node->left->right;
-                node->left  = node->left->left;
-                bin_tree_del_node(bin_tree, &left_node);
-            }
-        }
-
-        if (node->data == OP_PLUS || node->data == OP_MINUS) {
-
-            if (node->left->data == 0  && node->left->type == TYPE_CONST) {
-
-                bin_tree_del_node(bin_tree, &node->left);
-                node_s* right_node = node->right;
-                node->type  = node->right->type;
-                node->data  = node->right->data;
-                node->left  = node->right->left;
-                node->right = node->right->right;
-                bin_tree_del_node(bin_tree, &right_node);
-
-            } else if (node->right->data == 0 && node->right->type  == TYPE_CONST) {
-
-                bin_tree_del_node(bin_tree, &node->left);
-                node_s* left_node = node->left;
-                node->type  = node->left->type;
-                node->data  = node->left->data;
-                node->right = node->left->right;
-                node->left  = node->left->left;
-                bin_tree_del_node(bin_tree, &left_node);
-            }
-        }
-    }
+    SAFE_CALL( conv_consts   (bin_tree, node), )
+    SAFE_CALL( plus_simplify (bin_tree, node), )
+    SAFE_CALL( minus_simplify(bin_tree, node), )
+    SAFE_CALL( mul_simplify  (bin_tree, node), )
 
     bin_tree_dmp(bin_tree);
     LOG_OK("brunch simplify successfully");
@@ -210,13 +143,129 @@ double node_solve(bin_tree_s* bin_tree, node_s* node) {
                 return node->left->data / node->right->data;
 
             case OP_SIN:
+                return sin(node->left->data);
+
             case OP_COS:
+                return cos(node->left->data);
+
             default:
                 LOG_ERROR("Incorrect param");
         }
 
     bin_tree_dmp(bin_tree);
     return NAN;
+}
+
+
+error_code_e conv_consts(bin_tree_s* bin_tree, node_s* node) {
+    assert(node     != NULL);
+    assert(bin_tree != NULL);
+
+    if (node->left->type == TYPE_CONST && node->right->type == TYPE_CONST) {
+        assert(node->type == TYPE_OP);
+
+        double new_data = node_solve(bin_tree, node);
+        if (isnan(new_data)) {
+            LOG_ERROR("cant solve node");
+            return INCORRECT_PARAM;
+        }
+
+        node->data  = new_data;
+        node->type  = TYPE_CONST;
+
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+
+    }
+
+    return SUCCESS;
+}
+
+error_code_e plus_simplify (bin_tree_s* bin_tree, node_s* node) {
+    assert(node     != NULL);
+    assert(bin_tree != NULL);
+
+    if (node->type != TYPE_OP || node->data != OP_PLUS) {
+        return SUCCESS;
+    }
+
+    if (node->left->data == 0  && node->left->type == TYPE_CONST) {
+
+        init_node(node, node->right->type, node->right->data, node->right->left, node->right->right);
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+
+    } else if (node->right->data == 0 && node->right->type  == TYPE_CONST) {
+
+        init_node(node, node->left->type, node->left->data, node->left->left, node->left->right);
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+
+    }
+
+    return SUCCESS;
+}
+
+
+error_code_e minus_simplify(bin_tree_s* bin_tree, node_s* node) {
+    assert(node     != NULL);
+    assert(bin_tree != NULL);
+
+    if (node->type != TYPE_OP || node->data != OP_MINUS) {
+        return SUCCESS;
+    }
+
+    if (node->left->data == 0  && node->left->type == TYPE_CONST) {
+
+        init_node(node, node->right->type, -node->right->data, node->right->left, node->right->right);
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+
+    } else if (node->right->data == 0 && node->right->type  == TYPE_CONST) {
+
+        init_node(node, node->left->type, node->left->data, node->left->left, node->left->right);
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+
+    }
+
+    return SUCCESS;
+}
+
+
+error_code_e mul_simplify  (bin_tree_s* bin_tree, node_s* node) {
+    assert(bin_tree != NULL);
+    assert(node     != NULL);
+
+    if (node->type != TYPE_OP || node->data != OP_MUL) {
+        return SUCCESS;
+    }
+
+    if ((node->left->data  == 0 && node->left->type  == TYPE_CONST) ||
+        (node->right->data == 0 && node->right->type == TYPE_CONST)) {
+
+        node->data = 0;
+        node->type = TYPE_CONST;
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+        node->right = NULL;
+        node->left  = NULL;
+
+    } else if (node->left->data == 1 && node->left->type  == TYPE_CONST) {
+
+        init_node(node, node->right->type, node->right->data, node->right->left, node->right->right);
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+
+    } else if (node->right->data == 1 && node->right->type  == TYPE_CONST) {
+
+        init_node(node, node->left->type, node->left->data, node->left->left, node->left->right);
+        bin_tree_del_node(bin_tree, &node->left);
+        bin_tree_del_node(bin_tree, &node->right);
+
+    }
+
+    return SUCCESS;
 }
 
 

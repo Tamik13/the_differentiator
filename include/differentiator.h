@@ -14,14 +14,20 @@ struct op_info {
 
 ssize_t op_hash_bin_psk(unsigned long hash);
 
-node_s* new_node (elem_type_e type, double value, node_s* left, node_s* right);
+node_s* new_node (elem_type_e type, double      value, node_s* left,  node_s* right);
 node_s* copy_node(node_s*     node);
+void    init_node(node_s*     node, elem_type_e type,  double  value, node_s* left,  node_s* right);
 
 node_s* copy_branch(node_s* node);
 
-node_s*      diff               (      node_s*             node);
-error_code_e branch_simplify    (      bin_tree_s*         bin_tree, node_s* node);
-double       node_solve         (      bin_tree_s*         bin_tree, node_s* node);
+node_s*      diff           (node_s*     node);
+error_code_e branch_simplify(bin_tree_s* bin_tree, node_s* node);
+double       node_solve     (bin_tree_s* bin_tree, node_s* node);
+
+error_code_e conv_consts   (bin_tree_s* bin_tree, node_s* node);
+error_code_e plus_simplify (bin_tree_s* bin_tree, node_s* node);
+error_code_e minus_simplify(bin_tree_s* bin_tree, node_s* node);
+error_code_e mul_simplify  (bin_tree_s* bin_tree, node_s* node);
 
 node_s* op_plus (node_s* first_node, node_s* second_node);
 node_s* op_minus(node_s* first_node, node_s* second_node);

@@ -22,11 +22,8 @@ int main() {
     SAFE_CALL( op_tree_init(&bin_tree, &buffer), );
 
     bin_tree_s diff_tree = {};
+    SAFE_CALL( create_diff_tree(&diff_tree, bin_tree.root), )
 
-    diff_tree.root = diff(bin_tree.root);
-    assert(diff_tree.root != NULL);
-
-    diff_tree.count_nodes = 5;
     bin_tree_dmp(&diff_tree);
 
     tex_dump_new_formula(bin_tree.root);

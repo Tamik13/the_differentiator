@@ -17,6 +17,25 @@ const char* const tex_file_name   = "./logs/tex/log.tex";
 
 
 
+error_code_e create_diff_tree(bin_tree_s* bin_tree, node_s* node) {
+    assert(node     != NULL);
+    assert(bin_tree != NULL);
+
+    SAFE_CALL( bin_tree_assign(bin_tree), )
+    bin_tree->root = diff(node);
+
+    if (bin_tree->root == NULL) {
+        bin_tree_destroy(bin_tree);
+        LOG_ERROR("cant diff node");
+        return INCORRECT_PARAM;
+    }
+
+    bin_tree->count_nodes = count_nodes(bin_tree->root);
+
+    return SUCCESS;
+}
+
+
 node_s* diff(node_s* node) {
     assert(node != NULL);
 
@@ -126,8 +145,6 @@ double node_solve(bin_tree_s* bin_tree, node_s* node) {
     assert(node        != NULL);
     assert(node->left  != NULL);
     assert(node->right != NULL);
-
-
 
     switch ((op_type_e)node->data) {
             case OP_PLUS:
@@ -611,3 +628,10 @@ ssize_t op_hash_bin_psk(unsigned long hash) {
     return -1;
 }
 
+ssize_t count_nodes(node_s* node) {
+    if (node == NULL) {
+        return 0;
+    }
+
+    return count_nodes(node->left) + count_nodes(node->right) + 1;
+}
